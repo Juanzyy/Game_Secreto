@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   runApp(const MyApp());
@@ -30,33 +31,49 @@ class MyHomePage extends StatefulWidget {
   State<MyHomePage> createState() => _MyHomePageState();
 }
 
-class _MyHomePageState extends State<MyHomePage>
-    with SingleTickerProviderStateMixin {
+class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
   late int _numeroSecreto;
   int _intentos = 0;
-  int _intentosRestantes = 3; // Límite de 3 intentos
+  int _intentosRestantes = 3;
+  int? _mejorRecord;
+  String _dificultad = 'facil';
+  late int _maxRango;
+  late int _maxIntentos;
   final List<int> _historialIntentos = [];
   String _mensaje = '';
+
   final TextEditingController _controller = TextEditingController();
+
   bool _juegoTerminado = false;
   bool _juegoPerdido = false;
+
   late AnimationController _animationController;
+  late AnimationController _iconBounceController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
+  late Animation<double> _iconBounceAnimation;
 
-  final List<String> _mensajesIniciales = [
-    '🚀 Modo turbo activado: ¡solo 3 intentos para ganar!',
-    '🧠 Tu misión secreta: adivina el número en 3 jugadas',
-    '🎲 Hoy manda la suerte... y solo tienes 3 oportunidades',
-    '⚡ Desafío exprés: encuentra el número en 3 intentos',
-  ];
+  List<String> _getMensajesIniciales() {
+    return [
+      '🚀 Modo turbo activado: ¡solo $_maxIntentos intentos para ganar!',
+      '🧠 Tu misión secreta: adivina el número en $_maxIntentos jugadas',
+      '🎲 Hoy manda la suerte... y solo tienes $_maxIntentos oportunidades',
+      '⚡ Desafío exprés: encuentra el número en $_maxIntentos intentos',
+    ];
+  }
 
   @override
   void initState() {
     super.initState();
+
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
+    );
+
+    _iconBounceController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 650),
     );
 
     _fadeAnimation = CurvedAnimation(
@@ -72,21 +89,74 @@ class _MyHomePageState extends State<MyHomePage>
           ),
         );
 
+    _iconBounceAnimation = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween<double>(
+          begin: 1.0,
+          end: 1.30,
+        ).chain(CurveTween(curve: Curves.easeOut)),
+        weight: 45,
+      ),
+      TweenSequenceItem(
+        tween: Tween<double>(
+          begin: 1.30,
+          end: 0.92,
+        ).chain(CurveTween(curve: Curves.easeInOut)),
+        weight: 25,
+      ),
+      TweenSequenceItem(
+        tween: Tween<double>(
+          begin: 0.92,
+          end: 1.0,
+        ).chain(CurveTween(curve: Curves.elasticOut)),
+        weight: 30,
+      ),
+    ]).animate(_iconBounceController);
+
     _iniciarJuego();
+    _cargarRecord();
+  }
+
+  Future<void> _cargarRecord() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _mejorRecord = prefs.getInt('record');
+    });
+  }
+
+  Future<void> _guardarRecord(int intentos) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (_mejorRecord == null || intentos < _mejorRecord!) {
+      await prefs.setInt('record', intentos);
+      setState(() {
+        _mejorRecord = intentos;
+      });
+    }
   }
 
   void _iniciarJuego() {
+    if (_dificultad == 'facil') {
+      _maxRango = 50;
+      _maxIntentos = 7;
+    } else {
+      _maxRango = 200;
+      _maxIntentos = 4;
+    }
+
     setState(() {
-      _numeroSecreto = Random().nextInt(100) + 1;
+      _numeroSecreto = Random().nextInt(_maxRango) + 1;
       _intentos = 0;
-      _intentosRestantes = 3;
+      _intentosRestantes = _maxIntentos;
       _historialIntentos.clear();
       _mensaje =
-          _mensajesIniciales[Random().nextInt(_mensajesIniciales.length)];
+          _getMensajesIniciales()[Random().nextInt(
+            _getMensajesIniciales().length,
+          )];
       _juegoTerminado = false;
       _juegoPerdido = false;
       _controller.clear();
     });
+
     _animationController.reset();
     _animationController.forward();
   }
@@ -95,14 +165,18 @@ class _MyHomePageState extends State<MyHomePage>
     if (_juegoTerminado || _juegoPerdido) return;
 
     final String texto = _controller.text.trim();
+
     if (texto.isEmpty) {
       _mostrarMensajeTemporal('📝 ¡Ingresa un número!', Colors.orange);
       return;
     }
 
     final int? adivinanza = int.tryParse(texto);
-    if (adivinanza == null || adivinanza < 1 || adivinanza > 100) {
-      _mostrarMensajeTemporal('⚠️ Solo números entre 1 y 100', Colors.orange);
+    if (adivinanza == null || adivinanza < 1 || adivinanza > _maxRango) {
+      _mostrarMensajeTemporal(
+        '⚠️ Solo números entre 1 y $_maxRango',
+        Colors.orange,
+      );
       return;
     }
 
@@ -116,7 +190,9 @@ class _MyHomePageState extends State<MyHomePage>
         _mensaje =
             '🥳 ¡Le atinaste! 🥳\nLo lograste en $_intentos ${_intentos == 1 ? 'intento' : 'intentos'}';
         _juegoTerminado = true;
-      } else if (_intentosRestantes == 0) {
+        _iconBounceController.forward(from: 0);
+        _guardarRecord(_intentos);
+      } else if (_intentosRestantes <= 0) {
         _mensaje =
             '💥 Se acabó la ronda 💥\nEl número secreto era $_numeroSecreto';
         _juegoPerdido = true;
@@ -174,7 +250,7 @@ class _MyHomePageState extends State<MyHomePage>
   }
 
   double _getProgresoIntentos() {
-    return (_intentosRestantes / 3).clamp(0.0, 1.0);
+    return (_intentosRestantes / _maxIntentos).clamp(0.0, 1.0);
   }
 
   Color _getColorProgresoIntentos() {
@@ -203,6 +279,7 @@ class _MyHomePageState extends State<MyHomePage>
   void dispose() {
     _controller.dispose();
     _animationController.dispose();
+    _iconBounceController.dispose();
     super.dispose();
   }
 
@@ -228,7 +305,30 @@ class _MyHomePageState extends State<MyHomePage>
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // Header con animación
+                      SegmentedButton<String>(
+                        segments: const <ButtonSegment<String>>[
+                          ButtonSegment<String>(
+                            value: 'facil',
+                            label: Text('Fácil'),
+                            icon: Icon(Icons.sentiment_satisfied),
+                          ),
+                          ButtonSegment<String>(
+                            value: 'dificil',
+                            label: Text('Difícil'),
+                            icon: Icon(Icons.sentiment_very_dissatisfied),
+                          ),
+                        ],
+                        selected: <String>{_dificultad},
+                        onSelectionChanged: (_juegoTerminado || _juegoPerdido)
+                            ? null
+                            : (Set<String> newSelection) {
+                                setState(() {
+                                  _dificultad = newSelection.first;
+                                  _iniciarJuego();
+                                });
+                              },
+                      ),
+                      const SizedBox(height: 24),
                       Container(
                         padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
@@ -242,34 +342,30 @@ class _MyHomePageState extends State<MyHomePage>
                             ),
                           ],
                         ),
-                        child: Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            TweenAnimationBuilder(
-                              duration: const Duration(seconds: 2),
-                              tween: Tween<double>(begin: 0, end: 2 * pi),
-                              builder: (context, double value, child) {
-                                return Transform.rotate(
-                                  angle: value,
-                                  child: child,
-                                );
-                              },
-                              child: Icon(
-                                _juegoPerdido
-                                    ? Icons.sentiment_dissatisfied
-                                    : Icons.psychology_alt,
-                                size: 60,
-                                color: _juegoPerdido ? Colors.red : Colors.teal,
-                              ),
+                        child: TweenAnimationBuilder(
+                          duration: const Duration(seconds: 2),
+                          tween: Tween<double>(begin: 0, end: 2 * pi),
+                          builder: (context, double value, child) {
+                            return Transform.rotate(angle: value, child: child);
+                          },
+                          child: ScaleTransition(
+                            scale: _iconBounceAnimation,
+                            child: Icon(
+                              _juegoPerdido
+                                  ? Icons.sentiment_dissatisfied
+                                  : Icons.psychology_alt,
+                              size: 60,
+                              color: _juegoPerdido ? Colors.red : Colors.teal,
                             ),
-                          ],
+                          ),
                         ),
                       ),
                       const SizedBox(height: 30),
 
-                      // Contenedor del mensaje principal
-                      Container(
-                        padding: const EdgeInsets.all(20),
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 350),
+                        curve: Curves.easeInOut,
+                        padding: EdgeInsets.all(_juegoTerminado ? 28 : 20),
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(20),
@@ -284,7 +380,7 @@ class _MyHomePageState extends State<MyHomePage>
                         child: Text(
                           _mensaje,
                           style: TextStyle(
-                            fontSize: 22,
+                            fontSize: _juegoTerminado ? 24 : 22,
                             fontWeight: FontWeight.w600,
                             color: _getMensajeColor(),
                             height: 1.4,
@@ -295,7 +391,6 @@ class _MyHomePageState extends State<MyHomePage>
 
                       const SizedBox(height: 30),
 
-                      // Contador de intentos
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 20,
@@ -341,6 +436,30 @@ class _MyHomePageState extends State<MyHomePage>
 
                       const SizedBox(height: 14),
 
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.teal.shade100),
+                        ),
+                        child: Text(
+                          _mejorRecord == null
+                              ? '🏆 Récord: —'
+                              : '🏆 Récord: $_mejorRecord intentos',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.teal,
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 14),
+
                       ClipRRect(
                         borderRadius: BorderRadius.circular(8),
                         child: LinearProgressIndicator(
@@ -355,7 +474,6 @@ class _MyHomePageState extends State<MyHomePage>
 
                       const SizedBox(height: 18),
 
-                      // Historial de intentos
                       if (_historialIntentos.isNotEmpty)
                         Container(
                           width: double.infinity,
@@ -390,6 +508,7 @@ class _MyHomePageState extends State<MyHomePage>
                                     final Color color = _getColorHistorial(
                                       intento,
                                     );
+
                                     return Container(
                                       margin: const EdgeInsets.only(bottom: 6),
                                       padding: const EdgeInsets.symmetric(
@@ -433,7 +552,6 @@ class _MyHomePageState extends State<MyHomePage>
 
                       const SizedBox(height: 30),
 
-                      // Campo de texto
                       Container(
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(15),
@@ -480,7 +598,6 @@ class _MyHomePageState extends State<MyHomePage>
 
                       const SizedBox(height: 20),
 
-                      // Botón principal
                       SizedBox(
                         width: double.infinity,
                         height: 60,
@@ -530,7 +647,6 @@ class _MyHomePageState extends State<MyHomePage>
 
                       const SizedBox(height: 12),
 
-                      // Botón de pista
                       SizedBox(
                         width: double.infinity,
                         height: 52,
@@ -561,7 +677,6 @@ class _MyHomePageState extends State<MyHomePage>
 
                       const SizedBox(height: 15),
 
-                      // Botón de reinicio con animación
                       if (_juegoTerminado || _juegoPerdido)
                         TweenAnimationBuilder(
                           duration: const Duration(milliseconds: 500),
