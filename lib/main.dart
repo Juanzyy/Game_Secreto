@@ -14,7 +14,7 @@ class MyApp extends StatelessWidget {
       title: 'Adivina el Número',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        primarySwatch: Colors.indigo,
+        primarySwatch: Colors.teal,
         fontFamily: 'Poppins',
         useMaterial3: true,
       ),
@@ -34,7 +34,7 @@ class _MyHomePageState extends State<MyHomePage>
     with SingleTickerProviderStateMixin {
   late int _numeroSecreto;
   int _intentos = 0;
-  int _intentosRestantes = 5; // Límite de 5 intentos
+  int _intentosRestantes = 3; // Límite de 3 intentos
   String _mensaje = '';
   final TextEditingController _controller = TextEditingController();
   bool _juegoTerminado = false;
@@ -44,10 +44,10 @@ class _MyHomePageState extends State<MyHomePage>
   late Animation<Offset> _slideAnimation;
 
   final List<String> _mensajesIniciales = [
-    '🎯 ¿Podrás adivinar el número? (5 intentos)',
-    '🔮 Concéntrate... solo 5 oportunidades',
-    '✨ La suerte está de tu lado - 5 intentos',
-    '🌟 Adivina el número secreto en 5 intentos',
+    '🚀 Modo turbo activado: ¡solo 3 intentos para ganar!',
+    '🧠 Tu misión secreta: adivina el número en 3 jugadas',
+    '🎲 Hoy manda la suerte... y solo tienes 3 oportunidades',
+    '⚡ Desafío exprés: encuentra el número en 3 intentos',
   ];
 
   @override
@@ -78,7 +78,7 @@ class _MyHomePageState extends State<MyHomePage>
     setState(() {
       _numeroSecreto = Random().nextInt(100) + 1;
       _intentos = 0;
-      _intentosRestantes = 5;
+      _intentosRestantes = 3;
       _mensaje =
           _mensajesIniciales[Random().nextInt(_mensajesIniciales.length)];
       _juegoTerminado = false;
@@ -111,15 +111,16 @@ class _MyHomePageState extends State<MyHomePage>
 
       if (adivinanza == _numeroSecreto) {
         _mensaje =
-            '🎉 ¡CORRECTO! 🎉\nLo lograste en $_intentos ${_intentos == 1 ? 'intento' : 'intentos'}';
+            '🥳 ¡Le atinaste! 🥳\nLo lograste en $_intentos ${_intentos == 1 ? 'intento' : 'intentos'}';
         _juegoTerminado = true;
       } else if (_intentosRestantes == 0) {
-        _mensaje = '😢 ¡GAME OVER! 😢\nEl número secreto era $_numeroSecreto';
+        _mensaje =
+            '💥 Se acabó la ronda 💥\nEl número secreto era $_numeroSecreto';
         _juegoPerdido = true;
       } else if (adivinanza < _numeroSecreto) {
-        _mensaje = '⬆️ ¡Más alto! (Te quedan $_intentosRestantes intentos)';
+        _mensaje = '📈 ¡Súbelo! (Te quedan $_intentosRestantes intentos)';
       } else {
-        _mensaje = '⬇️ ¡Más bajo! (Te quedan $_intentosRestantes intentos)';
+        _mensaje = '📉 ¡Bájalo! (Te quedan $_intentosRestantes intentos)';
       }
     });
 
@@ -144,7 +145,7 @@ class _MyHomePageState extends State<MyHomePage>
     if (_juegoPerdido) return Colors.red;
     if (_mensaje.contains('alto')) return Colors.blue;
     if (_mensaje.contains('bajo')) return Colors.red;
-    return Colors.indigo;
+    return Colors.teal;
   }
 
   @override
@@ -162,11 +163,7 @@ class _MyHomePageState extends State<MyHomePage>
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              Colors.indigo.shade50,
-              Colors.white,
-              Colors.indigo.shade50,
-            ],
+            colors: [Colors.teal.shade50, Colors.white, Colors.teal.shade50],
           ),
         ),
         child: SafeArea(
@@ -188,7 +185,7 @@ class _MyHomePageState extends State<MyHomePage>
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.indigo.withOpacity(0.2),
+                              color: Colors.teal.withOpacity(0.2),
                               blurRadius: 20,
                               spreadRadius: 5,
                             ),
@@ -211,9 +208,7 @@ class _MyHomePageState extends State<MyHomePage>
                                     ? Icons.sentiment_dissatisfied
                                     : Icons.psychology_alt,
                                 size: 60,
-                                color: _juegoPerdido
-                                    ? Colors.red
-                                    : Colors.indigo,
+                                color: _juegoPerdido ? Colors.red : Colors.teal,
                               ),
                             ),
                           ],
@@ -258,12 +253,12 @@ class _MyHomePageState extends State<MyHomePage>
                         decoration: BoxDecoration(
                           color: _intentosRestantes <= 2
                               ? Colors.red.shade50
-                              : Colors.indigo.shade50,
+                              : Colors.teal.shade50,
                           borderRadius: BorderRadius.circular(30),
                           border: Border.all(
                             color: _intentosRestantes <= 2
                                 ? Colors.red.shade200
-                                : Colors.indigo.shade200,
+                                : Colors.teal.shade200,
                             width: 2,
                           ),
                         ),
@@ -276,7 +271,7 @@ class _MyHomePageState extends State<MyHomePage>
                                   : Icons.hourglass_bottom,
                               color: _intentosRestantes <= 2
                                   ? Colors.red
-                                  : Colors.indigo,
+                                  : Colors.teal,
                             ),
                             const SizedBox(width: 8),
                             Text(
@@ -286,7 +281,7 @@ class _MyHomePageState extends State<MyHomePage>
                                 fontWeight: FontWeight.bold,
                                 color: _intentosRestantes <= 2
                                     ? Colors.red
-                                    : Colors.indigo,
+                                    : Colors.teal,
                               ),
                             ),
                           ],
@@ -301,7 +296,7 @@ class _MyHomePageState extends State<MyHomePage>
                           borderRadius: BorderRadius.circular(15),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.indigo.withOpacity(0.1),
+                              color: Colors.teal.withOpacity(0.1),
                               blurRadius: 10,
                               offset: const Offset(0, 5),
                             ),
@@ -324,7 +319,7 @@ class _MyHomePageState extends State<MyHomePage>
                             fillColor: Colors.white,
                             prefixIcon: const Icon(
                               Icons.casino,
-                              color: Colors.indigo,
+                              color: Colors.teal,
                             ),
                             suffixIcon: _controller.text.isNotEmpty
                                 ? IconButton(
@@ -353,13 +348,13 @@ class _MyHomePageState extends State<MyHomePage>
                           style: ElevatedButton.styleFrom(
                             backgroundColor: _juegoTerminado
                                 ? Colors.green
-                                : (_juegoPerdido ? Colors.red : Colors.indigo),
+                                : (_juegoPerdido ? Colors.red : Colors.teal),
                             foregroundColor: Colors.white,
                             disabledBackgroundColor: _juegoTerminado
                                 ? Colors.green.shade100
                                 : (_juegoPerdido
                                       ? Colors.red.shade100
-                                      : Colors.indigo.shade100),
+                                      : Colors.teal.shade100),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(15),
                             ),
@@ -403,9 +398,9 @@ class _MyHomePageState extends State<MyHomePage>
                           child: OutlinedButton.icon(
                             onPressed: _iniciarJuego,
                             style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.indigo,
+                              foregroundColor: Colors.teal,
                               side: const BorderSide(
-                                color: Colors.indigo,
+                                color: Colors.teal,
                                 width: 2,
                               ),
                               shape: RoundedRectangleBorder(
