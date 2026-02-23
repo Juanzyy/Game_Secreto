@@ -35,6 +35,7 @@ class _MyHomePageState extends State<MyHomePage>
   late int _numeroSecreto;
   int _intentos = 0;
   int _intentosRestantes = 3; // Límite de 3 intentos
+  final List<int> _historialIntentos = [];
   String _mensaje = '';
   final TextEditingController _controller = TextEditingController();
   bool _juegoTerminado = false;
@@ -79,6 +80,7 @@ class _MyHomePageState extends State<MyHomePage>
       _numeroSecreto = Random().nextInt(100) + 1;
       _intentos = 0;
       _intentosRestantes = 3;
+      _historialIntentos.clear();
       _mensaje =
           _mensajesIniciales[Random().nextInt(_mensajesIniciales.length)];
       _juegoTerminado = false;
@@ -107,6 +109,7 @@ class _MyHomePageState extends State<MyHomePage>
     setState(() {
       _intentos++;
       _intentosRestantes--;
+      _historialIntentos.add(adivinanza);
       _controller.clear();
 
       if (adivinanza == _numeroSecreto) {
@@ -121,6 +124,28 @@ class _MyHomePageState extends State<MyHomePage>
         _mensaje = '📈 ¡Súbelo! (Te quedan $_intentosRestantes intentos)';
       } else {
         _mensaje = '📉 ¡Bájalo! (Te quedan $_intentosRestantes intentos)';
+      }
+    });
+
+    _animationController.reset();
+    _animationController.forward();
+  }
+
+  void _usarPista() {
+    if (_juegoTerminado || _juegoPerdido) return;
+
+    setState(() {
+      _intentos++;
+      _intentosRestantes--;
+
+      if (_intentosRestantes <= 0) {
+        _mensaje =
+            '💥 Te quedaste sin intentos por usar pista\nEl número secreto era $_numeroSecreto';
+        _juegoPerdido = true;
+      } else {
+        final bool esPar = _numeroSecreto % 2 == 0;
+        _mensaje =
+            '💡 Pista: el número secreto es ${esPar ? 'par' : 'impar'}\n(Te quedan $_intentosRestantes intentos)';
       }
     });
 
@@ -146,6 +171,32 @@ class _MyHomePageState extends State<MyHomePage>
     if (_mensaje.contains('alto')) return Colors.blue;
     if (_mensaje.contains('bajo')) return Colors.red;
     return Colors.teal;
+  }
+
+  double _getProgresoIntentos() {
+    return (_intentosRestantes / 3).clamp(0.0, 1.0);
+  }
+
+  Color _getColorProgresoIntentos() {
+    if (_intentosRestantes >= 2) return Colors.green;
+    if (_intentosRestantes == 1) return Colors.amber;
+    return Colors.red;
+  }
+
+  Color _getColorHistorial(int intento) {
+    final int diferencia = intento - _numeroSecreto;
+    if (diferencia >= 15) return Colors.red;
+    if (diferencia <= -15) return Colors.blue;
+    return Colors.teal;
+  }
+
+  String _getEtiquetaHistorial(int intento) {
+    final int diferencia = intento - _numeroSecreto;
+    if (diferencia >= 15) return 'Muy alto';
+    if (diferencia <= -15) return 'Muy bajo';
+    if (diferencia > 0) return 'Algo alto';
+    if (diferencia < 0) return 'Algo bajo';
+    return 'Correcto';
   }
 
   @override
@@ -288,6 +339,98 @@ class _MyHomePageState extends State<MyHomePage>
                         ),
                       ),
 
+                      const SizedBox(height: 14),
+
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: LinearProgressIndicator(
+                          value: _getProgresoIntentos(),
+                          minHeight: 12,
+                          backgroundColor: Colors.grey.shade300,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            _getColorProgresoIntentos(),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 18),
+
+                      // Historial de intentos
+                      if (_historialIntentos.isNotEmpty)
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: Colors.teal.shade100),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Historial de intentos',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.teal,
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              SizedBox(
+                                height: 110,
+                                child: ListView.builder(
+                                  itemCount: _historialIntentos.length,
+                                  itemBuilder: (context, index) {
+                                    final int intento =
+                                        _historialIntentos[_historialIntentos
+                                                .length -
+                                            1 -
+                                            index];
+                                    final Color color = _getColorHistorial(
+                                      intento,
+                                    );
+                                    return Container(
+                                      margin: const EdgeInsets.only(bottom: 6),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 8,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: color.withOpacity(0.10),
+                                        borderRadius: BorderRadius.circular(10),
+                                        border: Border.all(
+                                          color: color.withOpacity(0.35),
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            'Intento: $intento',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w600,
+                                              color: color,
+                                            ),
+                                          ),
+                                          Text(
+                                            _getEtiquetaHistorial(intento),
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w600,
+                                              color: color,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
                       const SizedBox(height: 30),
 
                       // Campo de texto
@@ -381,6 +524,37 @@ class _MyHomePageState extends State<MyHomePage>
                                 ),
                               ),
                             ],
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      // Botón de pista
+                      SizedBox(
+                        width: double.infinity,
+                        height: 52,
+                        child: OutlinedButton.icon(
+                          onPressed: (_juegoTerminado || _juegoPerdido)
+                              ? null
+                              : _usarPista,
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.teal,
+                            side: const BorderSide(
+                              color: Colors.teal,
+                              width: 2,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(15),
+                            ),
+                          ),
+                          icon: const Icon(Icons.lightbulb_outline),
+                          label: const Text(
+                            'Pista (cuesta 1 intento)',
+                            style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                       ),
